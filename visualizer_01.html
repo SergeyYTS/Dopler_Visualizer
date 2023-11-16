@@ -1,0 +1,201 @@
+<html>
+    <head>
+        <meta content="text/html;charset=utf-8" http-equiv="Content-Type">    
+        <title>Dopler Visualizer V1.0</title>
+        <style>
+            * {margin:4px;}
+        </style>
+    </head>
+    <body onload="initOnLoad()" ondeviceready="initOnDeviceready()">
+        <h4 id="header">D_Visualizer</h4>
+        <textarea id="textArea" cols="40" rows="5" placeholder="Insert (Ctrl+V) raw data here." onchange="textAreaChange()"></textarea>
+        </br>
+        <button onclick="analizeData()">Analize</button>   
+        </br>
+        <label for="rows">Number of rows:</label>
+        <!--input id="rowsNumberInput" name="rows" type="number" min="1" max="1000" value="2"-->
+        <label id="rowsLabel">0</label>
+        </br>
+        <label for="cols">Number of cols.:</label>
+        <!--input id="colsNumberInput" name="cols" type="number" min="1" max="1000" value="3"-->
+        <label id="colsLabel">0</label>
+        </br>
+        <button onclick="autoDetectLevels()">Auto detect levels</button> 
+        </br>  
+        <label for="blackLevel">Black level:</label>
+        <input id="blackLevelInput" type="range" name="blackLevel" min="0" max="65535" value="0" oninput="this.nextElementSibling.value = this.value">
+        <output id="blackLevelOutput">0</output>
+        </br>
+        <label for="whiteLevel">Wite level:</label>
+        <input id="whiteLevelInput" type="range" name="whiteLevel" min="0" max="65535" value="12000" oninput="this.nextElementSibling.value = this.value">
+        <output id="whiteLevelOutput">12000</output>
+        </br>
+        <label for="diagonalFlip">Diagonal flip</label>
+        <input id="diagonalFlipInput" name="diagonalFlip" type="checkbox">
+        </br>
+        <label for="poinSize">Poin size:</label>
+        <input id="poinSizeInput" name="poinSize" type="number" min="1" max="20" value="2">
+        </br>
+        <button onclick="drawData()">Draw</button> 
+        </br>
+        <canvas id="canvas" width=600 height=600></canvas>
+
+
+        <script>
+            // get canvas related references
+            var canvas = document.getElementById("canvas");
+            var ctx = canvas.getContext("2d");
+            var BB = canvas.getBoundingClientRect();
+            var offsetX = BB.left;
+            var offsetY = BB.top;
+            var WIDTH = canvas.width;
+            var HEIGHT = canvas.height;
+            const BACKGROUND_FILL_STILE = "#FAF7F8";
+            var textArea = document.getElementById("textArea");
+            var data;
+            var rowsLabel = document.getElementById("rowsLabel");
+            var colsLabel = document.getElementById("colsLabel");
+            var blackLevelInput = document.getElementById("blackLevelInput");
+            var blackLevelOutput = document.getElementById("blackLevelOutput");
+            var whiteLevelInput = document.getElementById("whiteLevelInput");
+            var whiteLevelOutput = document.getElementById("whiteLevelOutput");
+            var diagonalFlipInput = document.getElementById("diagonalFlipInput");
+            var poinSizeInput = document.getElementById("poinSizeInput");
+
+
+            function initOnLoad() {
+                console.log("initOnLoad");  
+                
+                initDraw();
+            }
+
+
+            function initOnDeviceready() {
+                console.log("initOnDeviceready");
+            }
+
+
+            // draw a single rect
+            function rect(x, y, w, h) {
+                ctx.beginPath();
+                ctx.rect(x, y, w, h);
+                ctx.closePath();
+                ctx.fill();
+            }
+
+
+            // clear the canvas
+            function clear() {
+                ctx.clearRect(0, 0, WIDTH, HEIGHT);
+            }
+
+            function drawBorder() {
+                ctx.moveTo(0, 0); 
+                ctx.lineTo(canvas.width, 0);
+                ctx.lineTo(canvas.width, canvas.height);
+                ctx.lineTo(0, canvas.height);
+                ctx.lineTo(0, 0); 
+                ctx.lineWidth = 1;
+                ctx.strokeStyle = "blue";
+                ctx.stroke(); 
+            }
+
+
+            function initDraw() {
+                clear();
+                drawBorder();
+                
+                //ctx.fillStyle = BACKGROUND_FILL_STILE;
+                //rect(0, 0, WIDTH, HEIGHT);
+            }
+
+
+            function textAreaChange() {
+                //alert(textArea.value);
+            }
+
+
+            function analizeData() {
+                var lines = textArea.value.split('\n');
+                //alert(lines.length);
+                data = [];
+                for (var l_n = 0; l_n < lines.length; l_n++) {
+                    var line = lines[l_n];    
+                    numbers = line.split('\t');
+                    const n = numbers.map(st => parseInt(st.trim()));
+                    data[data.length] = n;
+                }
+                //alert(data);
+                
+                var rowsNum = data.length;
+                var colsNum = data[0].length;
+                
+                rowsLabel.innerText = "" + rowsNum;
+                colsLabel.innerText = "" + colsNum;
+            }
+
+
+            function autoDetectLevels() {
+                var minVal = data[0][0];
+                var maxVal = data[0][0];
+                var rowsNum = data.length;
+                var colsNum = data[0].length;
+                for (var ro = 0; ro < rowsNum; ro++) {
+                    for (var co = 0; co < colsNum; co++) {
+                    var d = data[ro][co];
+                    if (d > maxVal) {
+                        maxVal = d;
+                    }
+                    if (d < minVal) {
+                        minVal = d;
+                    }
+                    }
+                }
+                
+                blackLevelInput.value = minVal;  
+                blackLevelOutput.value = minVal;
+                
+                whiteLevelInput.value = maxVal;
+                whiteLevelOutput.value = maxVal;  
+            }
+
+
+            function mapAndStrip(val, fromMin, fromMax, toMin, toMax) {
+                var newVal = (val - fromMin) / (fromMax - fromMin) * (toMax - toMin);
+                if (newVal < toMin) {
+                    newVal = toMin;
+                }
+                if (newVal > toMax) {
+                    newVal = toMax;
+                }
+                return newVal;
+            }
+
+
+            function drawData() {
+                clear();
+                
+                const pointSize = poinSizeInput.value;
+                var isDiagonalFlip = diagonalFlipInput.checked;
+                var minLevel = blackLevelInput.value;
+                var maxLevel = whiteLevelInput.value;
+                var rowsNum = data.length;
+                var colsNum = data[0].length;
+                for (var ro = 0; ro < rowsNum; ro++) {
+                    for (var co = 0; co < colsNum; co++) {
+                    var gr = mapAndStrip(data[ro][co], minLevel, maxLevel, 0, 255);
+                    ctx.fillStyle = "rgba(" + gr + "," + gr + "," + gr + ")";
+                    if (!isDiagonalFlip) {
+                        rect(co * pointSize, ro * pointSize, pointSize, pointSize);
+                    } else {
+                        rect(ro * pointSize, co * pointSize, pointSize, pointSize);
+                    }      
+                    }
+                }
+                
+                drawBorder();
+            }
+
+        </script>
+    </body>
+</html>
